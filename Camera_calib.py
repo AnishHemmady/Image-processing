@@ -1,5 +1,4 @@
 '''
-CSCI552
 Programmer Name-Anish Hemmady
 Topic-Camera Calibration 
 Programming Language-Python 2.7 and core numpy libraries
