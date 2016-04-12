@@ -1,0 +1,93 @@
+'''
+Name-Anish Hemmady
+Hough Transform
+'''
+#its awesome programming in python
+import cv2
+import numpy as np
+import math
+import time
+def houghyy(img):
+	img1=cv2.imread(img,0)
+	img22=img1.flatten()
+	#print set(img22.tolist())
+	for i in range(img1.shape[0]):
+		for j in range(img1.shape[1]):
+			if img1[i,j]>250:
+				img1[i,j]=255
+			else:
+				img1[i,j]=0
+	theta=np.arange(-90.0,90.0,1.0)
+	width,height=img1.shape
+	distmax=np.hypot(width,height)
+	accum=np.zeros((2*distmax,len(theta)))
+	for i in range(img1.shape[0]):
+		for j in range(img1.shape[1]):
+			if img1[i,j]!=0:
+				for k in range(len(theta)):
+					t=theta[k]*3.14/180
+					#print t
+					#time.sleep(4)
+					rho=round(i*math.cos(t)+j*math.sin(t))+distmax
+					accum[rho,k]+=1
+	accum1=accum.flatten()
+	
+	listyy=[]
+	#sety_list=set(accum1.tolist())
+	list11=accum1.tolist()
+	vals=dict((x,list11.count(x)) for x in set(list11))
+	#print vals
+	vals=vals.items()
+	#print vals
+	listy12=[]
+	for i in vals:
+		key=i[0]
+		value=i[1]
+		if value>2 and value<5:
+			listy12.append(key)
+		
+	#print listy12
+	thresh=max(listy12)
+	print thresh
+	for i in range(accum.shape[0]):
+		for j in range(accum.shape[1]):
+			if accum[i,j]>thresh:
+				listyy.append([i,j])
+	#print listyy
+	listy2=[]
+	for i in listyy:
+		ans=i
+		x1=ans[0]
+		y1=ans[1]
+		x1=x1-distmax
+		y1=theta[y1]*3.14/180
+		listy2.append([x1,y1])
+	#print listy2
+	img11=cv2.imread("can.jpg",1)
+	for i in range(len(listy2)):
+		ans=listy2[i]
+		rho=ans[0]
+		theta=ans[1]
+		a = np.cos(theta)
+		b = np.sin(theta)
+		x0 = a*rho
+		y0 = b*rho
+		x1 = int(x0 + 1000*(-b))
+		y1 = int(y0 + 1000*(a))
+		x2 = int(x0 - 1000*(-b))
+		y2 = int(y0 - 1000*(a))
+		cv2.line(img11,(y1,x1),(y2,x2),(0,0,255),1)
+		cv2.imwrite('houghlines3.jpg',img11)
+	
+
+	cv2.imwrite("accm.png",accum)
+	img11=cv2.imread('accm.png',0)
+	im_hsv = cv2.applyColorMap(img11, cv2.COLORMAP_HSV)
+	cv2.imwrite("accm1.png",im_hsv)
+	
+
+def main():
+	houghyy('can.jpg')
+	
+if __name__=='__main__':
+	main()
