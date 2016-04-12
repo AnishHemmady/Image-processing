@@ -1,0 +1,233 @@
+'''
+Programmer Name-Anish Hemmady
+Canny edge detector
+'''
+import numpy as np
+import math
+import cv2
+from math import exp,pi
+import time
+
+
+class canny_edgy:
+	def __init__(self,image,sigma,size):
+		self.img=cv2.imread(image,0)
+		self.sig=sigma
+		self.size=size
+	def gaussian_kernel(self,size,sigma):
+		if size%2==0:
+			range_val=range(-int(size/2),int(size/2))
+		else:
+			range_val=range(-int(size/2),int(size/2)+1)
+		return[1/(sigma*math.sqrt(2*pi))*(exp(-float(i)**2/(2*sigma**2)))for i in range_val]
+	
+	def gaussn_fltr(self):
+		arry=self.gaussian_kernel(self.size,self.sig)
+		arry1=np.array(arry)
+		print arry1
+		img=self.img
+		#1d
+		#do rowwise first
+		print img.shape
+		for i in range(img.shape[0]):
+			for j in range(img.shape[1]-len(arry1)):
+				sum=0
+		
+				for k in range(len(arry1)):
+					sum+=img[i,j+k]*arry1[k]
+
+				img[i,j]=sum
+		#get transpose of matrix to do column wise
+		img=np.transpose(img)
+		for i in range(img.shape[0]):
+			for j in range(img.shape[1]-len(arry1)):
+				sum=0
+				for k in range(len(arry1)):
+					sum+=img[i,j+k]*arry1[k]
+				img[i,j]=sum
+		img=np.transpose(img)
+		self.img=img
+		cv2.imwrite("newy123.png",self.img)
+		
+	def make_filter(self,inp_list):
+		order=math.sqrt(len(inp_list))
+		arry=np.array(inp_list)
+		reshpe_arry=np.reshape(arry,(order,order))
+		return reshpe_arry
+	
+	def gradnt(self):
+		#self.img=cv2.imread('1d4.png',0)
+		
+		#img1=np.array(self.img,dtype=float64)
+		#img2=np.array(self.img,dtype=float64)                        
+		img11=np.zeros((self.img.shape[0],self.img.shape[1]),dtype=np.float64)
+		img22=np.zeros((self.img.shape[0],self.img.shape[1]),dtype=np.float64)
+		fx=self.make_filter([1,2,1,0,0,0,-1,-2,-1])
+		fy=self.make_filter([-1,0,1,-2,0,2,-1,0,1])
+		#gradx = conv(self.img,fx)[1:-1,1:-1]
+		#grady = conv(self.img,fy)[1:-1,1:-1]
+		#print "----libry conv---"
+		#print gradx
+		#print gradx[1,1]
+		#print grady
+		#print"--------"
+		#print fx
+		for j in range(1,self.img.shape[0]-1):
+			for i in range(1,self.img.shape[1]-1):
+				sum=0
+				for y in range(len(fx)):
+					k2=fx[y]
+					#print k2
+					#convolution part
+					for x in range(len(k2)):
+						sum+=self.img[y+j-1,x+i-1]*fx[[y],[x]]
+					#print sum
+					img11[j,i]=(sum)
+					
+						
+		dx=img11
+		#print dx.dtype
+		#print dx[1,1]
+		cv2.imwrite("dx.png",dx)
+		
+		#img2=self.img
+		for j in range(1,self.img.shape[0]-1):
+			for i in range(1,self.img.shape[1]-1):
+				sum=0
+				for y in range(len(fy)):
+					k3=fy[y]
+					#convolution part
+					for x in range(len(k3)):
+						sum+=self.img[y+j-1,x+i-1]*fy[[y],[x]]
+					img22[j,i]=(sum)
+					
+		dy=img22
+		
+		cv2.imwrite("dy.png",dy)
+		grad = np.hypot(dx,dy)
+		cv2.imwrite("n1.png",grad)
+		theta=np.arctan2(dy,dx)
+		theta = 180.0 + (180.0/pi)*theta
+		x,y =np.where(grad < 10)
+		theta[x,y] = 0
+		grad[x,y] = 0
+		print theta
+		self.theta = theta
+		cv2.imwrite("angle_map11.jpg",self.theta)
+		for i in range(1,self.img.shape[0]):
+			for j in range(1,self.img.shape[1]):
+				if((theta[i,j]<22.5 and theta[i,j]>=0)or (theta[i,j]>=157.5 and theta[i,j]<202.5)
+					or(theta[i,j]>=337.5 and theta[i,j]<360)):
+					theta[i,j]=0
+				if((theta[i,j]>=22.5 and theta[i,j]<67.5)or (theta[i,j]>=202.5 and theta[i,j]<247.5)):
+					theta[i,j]=45
+				if((theta[i,j]>=67.5 and theta[i,j]<112.5)or (theta[i,j]>=247.5 and theta[i,j]<292.5)):
+					theta[i,j]=90
+				if((theta[i,j]>=112.5 and theta[i,j]<157.5)or (theta[i,j]>=292.5 and theta[i,j]<337.5)):
+					theta[i,j]=135
+		self.theta=theta
+		cv2.imwrite("annng.png",theta)
+		x,y = self.theta.shape        
+		self.grad = grad.copy()
+		x,y = self.grad.shape
+
+		for i in range(x):
+			for j in range(y):
+				if self.theta[i,j] == 0:
+					test = self.non_maxm_check(grad,i,j,1,0,-1,0)
+					if not test:
+						self.grad[i,j] = 0
+
+				elif self.theta[i,j] == 45:
+					test = self.non_maxm_check(grad,i,j,1,-1,-1,1)
+					if not test:
+						self.grad[i,j] = 0
+
+				elif self.theta[i,j] == 90:
+					test = self.non_maxm_check(grad,i,j,0,1,0,-1)
+					if not test:
+						self.grad[i,j] = 0
+				elif self.theta[i,j] == 135:
+					test = self.non_maxm_check(grad,i,j,1,1,-1,-1)
+					if not test:
+						self.grad[i,j] = 0
+					 
+		cv2.imwrite("Non-maxima_supp.png",self.grad)
+		#print self.grad
+		m = np.max(self.grad)
+		thresHigh = 0.2*m
+		thresLow= 0.1*m
+		init_point = self.stop(self.grad, thresHigh)
+		while (init_point != -1):
+
+			#print 'next segment is',init_point
+			self.grad[init_point[0],init_point[1]] = -1
+			p2 = init_point
+			p1 = init_point
+			p0 = init_point
+			p0 = self.nxt_neighbr(self.grad,p0,p1,p2,thresLow)
+		 
+			while (p0 != -1):
+				#print p0
+				p2 = p1
+				p1 = p0
+				self.grad[p0[0],p0[1]] = -1
+				p0 = self.nxt_neighbr(self.grad,p0,p1,p2,thresLow)
+				 
+			init_point = self.stop(self.grad,thresHigh)
+ 
+        # Finally, convert the image into a binary image
+		x,y = np.where(self.grad == -1)
+		self.grad[:,:] = 0
+		self.grad[x,y] = 255
+	def non_maxm_check(self,grad,i,j,x1,y1,x2,y2):
+	 
+			try:
+				if (grad[i,j] > grad[i+x1,j+y1]) and (grad[i,j] > grad[i+x2,j+y2]):
+					return 1
+				else:
+					return 0
+			except IndexError:
+				return -1
+
+	def stop(self,im,threshld):
+		x1,y1= np.where(im > threshld)
+		try:
+			y = y1.min()
+		except:
+			return -1
+		x1 = x1.tolist()
+		y1 = y1.tolist()
+		index = y1.index(y)
+		x = x1[index]
+		return [x,y]
+
+	def nxt_neighbr(self,im,p0,p1,p2,thres):
+		
+		lookup = [-1,0,1]
+		X,Y = im.shape
+		for i in lookup:
+			for j in lookup:
+				if (i+j) == 0:
+					continue
+				x = p0[0]+i
+				y = p0[1]+j
+				 
+				if (x<0) or (y<0) or (x>=X) or (y>=Y):
+					continue
+				if ([x,y] == p1) or ([x,y] == p2):
+					continue
+				if (im[x,y] > thres):
+					return [x,y]
+		return -1	
+def main():
+	can=canny_edgy("finl_img12.tif",1.4,9)
+	can.gaussn_fltr()
+	can.gradnt()
+	imgy=can.grad
+	cv2.imwrite("can.jpg",imgy)
+	
+	
+	
+if __name__=='__main__':
+	main()
